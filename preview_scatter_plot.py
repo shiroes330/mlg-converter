@@ -1,10 +1,12 @@
-tune_path = "C:\\Users\\shiro\\Documents\\TunerStudioProjects\\202402_firmware_0\\CurrentTune.msq"
+# tune_path = "C:\\Users\\shiro\\Documents\\TunerStudioProjects\\202402_firmware_0\\CurrentTune.msq"
+tune_path = "c:\\Users\\shiro\\OneDrive\\Documents\\TunerStudioProjects\\uaEFI_test\\CurrentTune.msq"
 
 
 import sys
 import xml.etree.ElementTree as ET
 import pandas as pd
 import matplotlib.pyplot as plt
+from pathlib import Path
 
 
 def get_table(i1, i2, col_num):
@@ -21,7 +23,7 @@ def draw_scatter(df, xtric, ytric):
     _, axs = plt.subplots(1, figsize=(12,8), height_ratios=[1])
     axs.set_facecolor("black")
     axs.grid(which="major", color="gray", linestyle="dotted")
-    s3 = axs.scatter(df["RPM"], df["MAP"], s=2, c=df["AFR_S"], cmap=plt.cm.jet)
+    s3 = axs.scatter(df["RPM"], df["MAP"], s=2, c=df["AFR_S"], cmap=plt.cm.jet, vmin=11, vmax=18)
     plt.xticks([int(float(d)) for d in xtric])
     plt.yticks([int(float(d)) for d in ytric])
     plt.tick_params(labelsize=7)
@@ -30,8 +32,11 @@ def draw_scatter(df, xtric, ytric):
 
 if __name__ == "__main__":
     log_path = sys.argv[1]
-    log_path = log_path.replace(".mlg", ".csv")
-    tree = ET.parse(tune_path)
+    log_p = Path(log_path)
+    log_p = log_p.with_suffix('.csv')
+    tunefile_p = log_p.parent.with_name("CurrentTune.msq")
+
+    tree = ET.parse(tunefile_p.as_posix())
     root = tree.getroot()
     print(root)
     for i1, one_c in enumerate(root):
@@ -40,17 +45,20 @@ if __name__ == "__main__":
             if "ve" in two_c.attrib['name']:
                 print("i1: %s"%i1)
                 print("i2: %s"%i2)
-    ve_table = get_table(4,0,16)
-    x_bin = get_table(4,1,1)
-    y_bin = get_table(4,2,1)
+    # ve_table = get_table(4,0,16) # Speduino
+    # x_bin = get_table(3,1,1)
+    # y_bin = get_table(4,2,1)
+    ve_table = get_table(3,1461,16) # rusEFI
+    y_bin = get_table(3,1462,1)
+    x_bin = get_table(3,1463,1)
     ve_table.columns=x_bin[0].to_list()
     ve_table.index=y_bin[0].to_list()
     print(ve_table.head())
 
     # Load log
-    df = pd.read_csv(log_path, delimiter=";", skiprows=[1], index_col="Time")
+    df = pd.read_csv(log_p.as_posix(), delimiter=";", skiprows=[1], index_col="Time")
     print(df.keys())
-    afr_shit = df["AFR"].to_list()[1:]
+    afr_shit = df["Air/Fuel Ratio"].to_list()[1:]
     afr_shit.append(14.7)
     df['AFR_S'] = afr_shit
     draw_scatter(df, ve_table.columns.to_list(), ve_table.index.to_list())
